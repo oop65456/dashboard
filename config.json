@@ -1,0 +1,214 @@
+{
+  "_note": "What the dashboard watches. Edit this file to add or remove symbols. It is this project's own list (copied once from the agent's watchlist on 2026-11-13); the two never sync.",
+  "stocks": [
+    "SPY",
+    "QQQ",
+    "NVDA",
+    "AAPL",
+    "MSFT",
+    "TSLA",
+    "AMD",
+    "META",
+    "AMZN",
+    "GOOGL",
+    "AVGO",
+    "NFLX",
+    "JPM",
+    "PLTR",
+    "COIN",
+    "MU",
+    "GLD"
+  ],
+  "crypto": [
+    "BTC/USD",
+    "ETH/USD",
+    "SOL/USD",
+    "PAXG/USD"
+  ],
+  "macro_fred": {
+    "DTWEXBGS": "US dollar index (broad)",
+    "DGS10": "US 10-year Treasury yield",
+    "DFII10": "US 10-year real yield"
+  },
+  "scan_every_minutes": {
+    "pc": {
+      "stocks": 1,
+      "crypto": 1,
+      "forex": 10
+    },
+    "github_actions": {
+      "stocks": 15,
+      "crypto": 15,
+      "forex": 30
+    }
+  },
+  "fomc_decision_days": {
+    "_source": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm (checked 2026-11-13; 2027 dates are tentative)",
+    "dates": [
+      "2026-12-09",
+      "2027-01-27",
+      "2027-03-17",
+      "2027-04-28",
+      "2027-06-09",
+      "2027-07-28",
+      "2027-09-15",
+      "2027-10-27",
+      "2027-11-17"
+    ]
+  },
+  "names": {
+    "_note": "Words that show a headline is really about this asset. The negative-news warning only counts headlines containing one of them.",
+    "SPY": [
+      "S&P 500",
+      "S&P",
+      "Wall Street",
+      "stock market",
+      "stocks"
+    ],
+    "QQQ": [
+      "Nasdaq",
+      "tech stocks"
+    ],
+    "NVDA": [
+      "Nvidia",
+      "NVDA"
+    ],
+    "AAPL": [
+      "Apple",
+      "AAPL",
+      "iPhone"
+    ],
+    "MSFT": [
+      "Microsoft",
+      "MSFT"
+    ],
+    "TSLA": [
+      "Tesla",
+      "TSLA",
+      "Musk"
+    ],
+    "AMD": [
+      "AMD",
+      "Advanced Micro"
+    ],
+    "META": [
+      "Meta",
+      "Facebook",
+      "Instagram"
+    ],
+    "AMZN": [
+      "Amazon",
+      "AMZN",
+      "AWS"
+    ],
+    "GOOGL": [
+      "Google",
+      "Alphabet",
+      "GOOGL"
+    ],
+    "AVGO": [
+      "Broadcom",
+      "AVGO"
+    ],
+    "NFLX": [
+      "Netflix",
+      "NFLX"
+    ],
+    "JPM": [
+      "JPMorgan",
+      "JPM",
+      "Dimon"
+    ],
+    "PLTR": [
+      "Palantir",
+      "PLTR"
+    ],
+    "COIN": [
+      "Coinbase",
+      "COIN"
+    ],
+    "MU": [
+      "Micron",
+      "MU"
+    ],
+    "GLD": [
+      "gold",
+      "bullion"
+    ],
+    "BTC/USD": [
+      "Bitcoin",
+      "BTC",
+      "crypto"
+    ],
+    "ETH/USD": [
+      "Ethereum",
+      "Ether",
+      "ETH"
+    ],
+    "SOL/USD": [
+      "Solana",
+      "SOL"
+    ],
+    "PAXG/USD": [
+      "gold",
+      "bullion",
+      "PAXG"
+    ]
+  },
+  "forex": {
+    "_note": "Forex and gold for trading yourself on XM. 'xm' is the symbol name in the XM app (some accounts add a suffix, e.g. EURUSD#). Twelve Data free plan: 800 requests/day; this list uses about 500/day.",
+    "pairs": [
+      {
+        "symbol": "EUR/USD",
+        "xm": "EURUSD"
+      },
+      {
+        "symbol": "GBP/USD",
+        "xm": "GBPUSD"
+      },
+      {
+        "symbol": "USD/JPY",
+        "xm": "USDJPY"
+      },
+      {
+        "symbol": "AUD/USD",
+        "xm": "AUDUSD"
+      },
+      {
+        "symbol": "USD/CHF",
+        "xm": "USDCHF"
+      },
+      {
+        "symbol": "USD/CAD",
+        "xm": "USDCAD"
+      },
+      {
+        "symbol": "NZD/USD",
+        "xm": "NZDUSD"
+      },
+      {
+        "symbol": "XAU/USD",
+        "xm": "GOLD",
+        "kind": "gold"
+      }
+    ],
+    "context_only": [
+      "USD/THB"
+    ],
+    "contract": {
+      "_note": "Units per 1.00 lot. Forex sizes are from XM's help centre (Standard 100,000; Micro 1,000). Gold: check 'Specification' for GOLD in the XM app and edit if different.",
+      "standard": {
+        "fx": 100000,
+        "gold": 100
+      },
+      "micro": {
+        "fx": 1000,
+        "gold": 1
+      }
+    },
+    "refresh_minutes": {
+      "1day": 120,
+      "1h": 30
+    }
+  }
+}

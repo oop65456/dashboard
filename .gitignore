@@ -1,0 +1,6 @@
+# Never upload keys or your local data archive to GitHub
+.env
+.venv/
+__pycache__/
+*.pyc
+data/

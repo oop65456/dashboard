@@ -1,0 +1,96 @@
+# Runs the scanner in GitHub's cloud every 15 minutes when your PC is OFF, and publishes the
+# encrypted dashboard to GitHub Pages. When your PC published in the last 20 minutes, it skips.
+# Run it by hand (from your phone too): Actions tab -> "scan" -> Run workflow.
+name: scan
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"          # GitHub may start scheduled runs a few minutes late
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Run even if the PC published recently"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write                   # replace the gh-pages branch
+  pages: write                      # ask GitHub to rebuild the site afterwards
+
+concurrency:
+  group: scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Did the PC publish recently?
+        id: fresh
+        env:
+          FORCE: ${{ inputs.force }}
+        run: |
+          python3 - <<'PY'
+          import datetime, json, os, urllib.request
+          repo, skip = os.environ["GITHUB_REPOSITORY"], "false"
+          try:
+              url = f"https://raw.githubusercontent.com/{repo}/gh-pages/status.json"
+              with urllib.request.urlopen(url, timeout=20) as r:
+                  s = json.load(r)
+              t = datetime.datetime.fromisoformat(s["published_at"].replace("Z", "+00:00"))
+              age = (datetime.datetime.now(datetime.timezone.utc) - t).total_seconds() / 60
+              print(f"Last publish: {s['source']}, {age:.0f} min ago")
+              if s["source"] == "pc" and age < 20 and os.environ.get("FORCE") != "true":
+                  skip = "true"
+                  print("The PC is publishing: nothing to do.")
+          except Exception as e:
+              print(f"No published status yet ({e}): running.")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"skip={skip}\n")
+          PY
+
+      - uses: actions/checkout@v4
+        if: steps.fresh.outputs.skip != 'true'
+
+      - uses: actions/setup-python@v5
+        if: steps.fresh.outputs.skip != 'true'
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        if: steps.fresh.outputs.skip != 'true'
+        run: pip install -r requirements.txt
+
+      - name: Restore the price archive
+        if: steps.fresh.outputs.skip != 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: data
+          key: data-${{ github.run_id }}
+          restore-keys: data-
+
+      - name: Update prices, news and signals, then publish
+        if: steps.fresh.outputs.skip != 'true'
+        env:
+          APCA_API_KEY_ID: ${{ secrets.APCA_API_KEY_ID }}
+          APCA_API_SECRET_KEY: ${{ secrets.APCA_API_SECRET_KEY }}
+          TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+          COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
+          DASHBOARD_PASSPHRASE: ${{ secrets.DASHBOARD_PASSPHRASE }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python collect.py
+          python news.py > /dev/null
+          python signals.py > /dev/null
+          python publish.py --source actions
+
+      - name: Save the price archive for next time
+        if: always() && steps.fresh.outputs.skip != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: data
+          key: data-${{ github.run_id }}
