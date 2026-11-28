@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Signals">
+<title>Signal Dashboard</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%227%22 fill=%22%2313804a%22/%3E%3Cpath d=%22M6 22l7-7 5 4 8-9%22 stroke=%22white%22 stroke-width=%223%22 fill=%22none%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#f5f5f2;--card:#fff;--ink:#17181a;--muted:#6b6d72;--line:#e3e3df;--soft:#f0f0ec;
+  --buy:#13804a;--buy-bg:#e3f4ea;--sell:#c0362c;--sell-bg:#fbe7e5;--hold:#6b6d72;--hold-bg:#ececea;
+  --warn:#9a5b00;--warn-bg:#fdf1dc;--med:#1f5fbf;--med-bg:#e4edfb;--up:#13804a;--down:#c0362c;
+  --sma20:#2f6fdb;--sma50:#d9822b;--radius:12px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans Thai",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0f1114;--card:#181b20;--ink:#e9eaec;--muted:#9a9ea6;--line:#2a2e35;--soft:#20242a;
+  --buy:#45c07e;--buy-bg:#14301f;--sell:#ef6b60;--sell-bg:#3a1a17;--hold:#9a9ea6;--hold-bg:#262a30;
+  --warn:#f0b04a;--warn-bg:#352812;--med:#7aa7f0;--med-bg:#1a2740;--up:#45c07e;--down:#ef6b60;
+  --sma20:#6f9ef0;--sma50:#f0a35a;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.45;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+.wrap{max-width:1180px;margin:0 auto;padding:16px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;margin-bottom:10px}
+h1{font-size:20px;margin:0;font-weight:650;letter-spacing:-.01em}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:22px 0 8px;font-weight:600}
+.updated{color:var(--muted);font-size:13px}
+.banner{border-radius:var(--radius);padding:10px 14px;margin:8px 0;font-size:14px}
+.banner.stale{background:var(--sell-bg);color:var(--sell)}
+.banner.info{background:var(--soft);color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);
+  border-radius:999px;padding:4px 10px;font-size:13px;white-space:nowrap}
+.chip b{font-weight:600}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--hold);flex:none}
+.dot.g{background:var(--buy)}.dot.r{background:var(--sell)}.dot.a{background:var(--warn)}
+.events{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.event{flex:none;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;min-width:170px}
+.event.high{border-color:var(--warn)}
+.event .when{font-size:12px;color:var(--muted)}
+.event .name{font-weight:600;font-size:14px}
+.event .in{font-size:12px;color:var(--warn)}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 4px}
+.filters button{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--card);color:var(--ink);
+  border-radius:999px;padding:6px 12px;cursor:pointer}
+.filters button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.card.open{grid-column:1/-1}
+.head{all:unset;display:block;width:100%;box-sizing:border-box;padding:12px 14px;cursor:pointer}
+.head:focus-visible{outline:2px solid var(--med);outline-offset:-2px;border-radius:var(--radius)}
+.row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ticker{font-weight:700;font-size:17px}
+.kind{font-size:12px;color:var(--muted);margin-left:6px}
+.badge{font-size:12px;font-weight:700;letter-spacing:.04em;border-radius:6px;padding:3px 8px}
+.badge.buy{background:var(--buy-bg);color:var(--buy)}.badge.sell{background:var(--sell-bg);color:var(--sell)}
+.badge.hold,.badge.none{background:var(--hold-bg);color:var(--hold)}
+.badge.watch{background:var(--warn-bg);color:var(--warn)}
+.price{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:4px}
+.chg{font-size:14px;font-weight:600;margin-left:6px}.up{color:var(--up)}.down{color:var(--down)}
+.sess{font-size:12px;color:var(--muted)}
+.tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.tag{font-size:12px;border-radius:6px;padding:2px 7px;background:var(--soft);color:var(--ink)}
+.tag.low{background:var(--hold-bg)}.tag.medium{background:var(--med-bg);color:var(--med)}
+.tag.warn{background:var(--warn-bg);color:var(--warn)}
+.tag.exit{background:var(--sell-bg);color:var(--sell)}
+.hl{display:flex;gap:7px;align-items:flex-start;margin-top:8px;font-size:13px;color:var(--muted)}
+.hl .dot{margin-top:6px}
+.clip{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.detail{border-top:1px solid var(--line);padding:12px 14px 16px}
+.cols{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px}
+@media (max-width:760px){.cols{grid-template-columns:1fr}}
+.tabs{display:flex;gap:4px;margin-bottom:6px}
+.tabs button{font:inherit;font-size:12px;border:1px solid var(--line);background:var(--card);color:var(--muted);
+  border-radius:6px;padding:3px 9px;cursor:pointer}
+.tabs button[aria-pressed=true]{color:var(--ink);border-color:var(--ink)}
+.chart{height:300px;width:100%}
+.legend{font-size:12px;color:var(--muted);margin-top:4px}
+.legend i{display:inline-block;width:14px;height:2px;vertical-align:middle;margin:0 4px 0 8px}
+.box{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px}
+.box h3{margin:0 0 6px;font-size:14px}
+dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:13px}
+dt{color:var(--muted)}dd{margin:0}
+.ind{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font-size:13px}
+.ind div{background:var(--soft);border-radius:8px;padding:6px 8px}
+.ind span{display:block;color:var(--muted);font-size:11px}
+.news a,.box a{color:inherit;text-decoration:none}.box a{font-weight:500}.box a:hover{text-decoration:underline}.news a:hover{text-decoration:underline}
+.news li{display:flex;gap:8px;padding:6px 0;border-top:1px solid var(--line);font-size:13px}
+.news li:first-child{border-top:0}
+.news ul{list-style:none;margin:0;padding:0}
+.src{color:var(--muted);font-size:12px}
+table{width:100%;border-collapse:collapse;font-size:14px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+th,td{padding:8px 10px;text-align:left;border-top:1px solid var(--line)}
+th{font-size:12px;color:var(--muted);font-weight:600;border-top:0}
+th.n{text-align:right}
+td.n{text-align:right;font-variant-numeric:tabular-nums}
+.ctx{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:760px){.ctx{grid-template-columns:1fr}}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:8px 12px}
+.calc{margin:10px 0}
+.calc-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media (max-width:760px){.calc-row{grid-template-columns:1fr 1fr}}
+.calc label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+.calc input,.calc select{font:inherit;font-size:15px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 9px;width:100%}
+.calc .src{margin-top:8px}
+.badge.long{background:var(--buy-bg);color:var(--buy)}.badge.short{background:var(--sell-bg);color:var(--sell)}
+.badge.mixed{background:var(--warn-bg);color:var(--warn)}
+.tag.long{background:var(--buy-bg);color:var(--buy)}.tag.short{background:var(--sell-bg);color:var(--sell)}
+.size{background:var(--soft);border-radius:8px;padding:8px 10px;margin:8px 0;font-size:14px}
+.size b{font-size:16px}
+.unlock input[type=password]{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.unlock button{font:inherit;font-size:15px;border:0;border-radius:8px;padding:8px 16px;background:var(--ink);color:var(--bg);cursor:pointer}
+footer{color:var(--muted);font-size:12px;margin:26px 0 10px;line-height:1.6}
+footer a{color:inherit}
+.empty{color:var(--muted);padding:20px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Signal Dashboard</h1>
+    <span class="updated" id="updated">Loading…</span>
+  </header>
+  <form class="panel unlock" id="unlock" hidden>
+    <h3 style="margin:2px 0 6px">Unlock your dashboard</h3>
+    <div class="src" style="margin-bottom:8px">The data on this page is encrypted. Type the passphrase you put in DASHBOARD_PASSPHRASE.</div>
+    <div class="row" style="gap:8px;flex-wrap:wrap">
+      <input id="pass" type="password" autocomplete="current-password" placeholder="Passphrase" style="flex:1;min-width:200px">
+      <label class="src" style="display:flex;align-items:center;gap:6px"><input id="remember" type="checkbox" checked> Remember on this device</label>
+      <button type="submit">Unlock</button>
+    </div>
+    <div id="unlock-msg" class="src" style="margin-top:6px;color:var(--sell)"></div>
+  </form>
+  <div id="content">
+  <div id="banners"></div>
+  <div class="chips" id="market"></div>
+
+  <h2>Coming up</h2>
+  <div class="events" id="events"></div>
+
+  <div class="filters" id="filters" role="group" aria-label="Filter assets"></div>
+  <div class="grid" id="grid"></div>
+
+  <h2>Forex &amp; gold · trade yourself on XM</h2>
+  <div class="chips" id="fxmarket"></div>
+  <div class="panel calc">
+    <div class="calc-row">
+      <label>Balance (USD)<input id="c-bal" type="number" min="0" step="any" inputmode="decimal" placeholder="e.g. 500"></label>
+      <label>Risk per trade<select id="c-risk"><option value="0.5">0.5% of balance</option><option value="1" selected>1% of balance</option><option value="2">2% of balance</option></select></label>
+      <label>XM account type<select id="c-type"><option value="micro">Micro (1,000/lot)</option><option value="standard">Standard (100,000/lot)</option></select></label>
+      <label>Leverage<select id="c-lev"><option value="30">1:30</option><option value="100" selected>1:100</option><option value="500">1:500</option><option value="888">1:888</option></select></label>
+    </div>
+    <div class="src" id="calc-note"></div>
+  </div>
+  <div class="grid" id="fxgrid"></div>
+
+  <h2>Dollar, Fed &amp; macro</h2>
+  <div class="ctx">
+    <div class="panel news" id="usdnews"></div>
+    <div class="panel"><table id="macro"></table></div>
+  </div>
+
+  <h2>Market headlines</h2>
+  <div class="panel news" id="headlines"></div>
+
+  </div>
+  <footer>
+    <b>View only.</b> This page never places orders; you decide and trade yourself in the Alpaca app (stocks, crypto, GLD, PAXG) or the XM app (forex, gold). Forex and gold CFDs on XM are leveraged: most retail CFD accounts lose money.
+    <span id="disclaimer"></span>
+    Times are Bangkok time. Charts by <a href="https://www.tradingview.com/" target="_blank" rel="noopener">TradingView</a> Lightweight Charts.
+  </footer>
+</div>
+
+<script src="vendor/lightweight-charts.js"></script>
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const url = u => /^https?:\/\//i.test(u || "") ? u : "#";
+const num = (p, d) => p == null ? "–" : Number(p).toLocaleString("en-US", {minimumFractionDigits: d, maximumFractionDigits: d});
+const price = p => p == null ? "–" : num(p, Math.abs(p) >= 10 ? 2 : 4);
+const mins = iso => (Date.now() - new Date(iso).getTime()) / 60000;
+const ago = iso => { const m = mins(iso); return m < 60 ? `${Math.max(0, Math.round(m))}m ago` : m < 2880 ? `${Math.round(m / 60)}h ago` : `${Math.round(m / 1440)}d ago`; };
+const bkk = (iso, o) => new Date(iso).toLocaleString("en-GB", Object.assign({timeZone: "Asia/Bangkok", weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit"}, o || {}));
+const until = iso => { const m = -mins(iso); if (m < 0) return "now / just passed"; return m < 60 ? `in ${Math.round(m)} min` : m < 2880 ? `in ${Math.round(m / 60)} h` : `in ${Math.round(m / 1440)} days`; };
+const sentDot = l => `<span class="dot ${l === "positive" ? "g" : l === "negative" ? "r" : ""}" title="${esc(l)}"></span>`;
+
+const SESSION = {regular: ["US market open", "g"], "pre-market": ["Pre-market · limit orders", "a"],
+  "after-hours": ["After-hours · limit orders", "a"], overnight: ["Overnight · limit orders only", "a"],
+  closed: ["US market closed", "r"], "24/7": ["Open 24/7", "g"], unknown: ["Session unknown", ""]};
+const KIND = {stock: "Stock", crypto: "Crypto", gold: "Gold"};
+const FILTERS = [["all", "All"], ["buy", "Buy"], ["watch", "Watch"], ["sell", "Sell"], ["warn", "News warnings"], ["stock", "Stocks"], ["crypto", "Crypto"], ["gold", "Gold"]];
+const ORDER = {buy: 0, watch: 1, sell: 2, hold: 3, none: 4};
+
+let DATA = null, FILTER = "all";
+
+/* ---------- Data loading: plain JSON on your PC, encrypted on GitHub Pages ---------- */
+// On http://127.0.0.1:8000 the scanner serves signals.json directly. Online, only encrypted files exist:
+// status.json (time + salt) and enc/*.enc, decrypted here with your passphrase (AES-GCM, PBKDF2-SHA256).
+let ENC = null;                       // null = plain mode; {salt, iterations, key} = encrypted mode
+const PASS_KEY = "sd_pass";
+const b64d = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function deriveKey(pass, salt, iterations) {
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pass), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({name: "PBKDF2", salt: b64d(salt), iterations, hash: "SHA-256"}, base,
+    {name: "AES-GCM", length: 256}, false, ["decrypt"]);
+}
+async function decryptJson(blob) {
+  const plain = await crypto.subtle.decrypt({name: "AES-GCM", iv: b64d(blob.iv)}, ENC.key, b64d(blob.data));
+  const text = await new Response(new Blob([plain]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
+  return JSON.parse(text);
+}
+async function fetchData(path) {      // path: "signals" or "charts/AAPL"
+  const u = ENC ? `enc/${path}.enc` : `${path}.json`;
+  const r = await fetch(`${u}?t=${Date.now()}`, {cache: "no-store"});
+  if (!r.ok) throw new Error(`${u}: ${r.status}`);
+  return ENC ? decryptJson(await r.json()) : r.json();
+}
+function showUnlock(msg) {
+  $("#unlock").hidden = false; $("#content").hidden = true; $("#unlock-msg").textContent = msg || "";
+  $("#updated").textContent = "Locked";
+  setTimeout(() => $("#pass").focus(), 50);
+}
+async function unlockWith(pass, remember) {
+  ENC.key = await deriveKey(pass, ENC.salt, ENC.iterations);
+  try { DATA = await fetchData("signals"); }
+  catch (e) { ENC.key = null; try { localStorage.removeItem(PASS_KEY); } catch (x) {} showUnlock("That passphrase didn't work. Check it and try again."); return false; }
+  try { remember ? localStorage.setItem(PASS_KEY, pass) : localStorage.removeItem(PASS_KEY); } catch (e) {}
+  $("#unlock").hidden = true; $("#content").hidden = false;
+  render();
+  return true;
+}
+const OPEN = new Set(), MODE = {}, CHARTS = {};
+
+function renderHeader(d) {
+  const m = d.market, age = mins(d.generated_at);
+  $("#updated").textContent = `Updated ${bkk(d.generated_at)} (${ago(d.generated_at)}) · ${d.news_status}`;
+  const b = [];
+  if (age > 30) b.push(`<div class="banner stale"><b>Data is ${Math.round(age)} minutes old.</b> The scanner may be stopped, so signals may be out of date.</div>`);
+  b.push(`<div class="banner info">${esc(m.note)}</div>`);
+  $("#banners").innerHTML = b.join("");
+  const s = SESSION[m.stock_session] || SESSION.unknown;
+  $("#market").innerHTML = [
+    `<span class="chip"><span class="dot ${s[1]}"></span>${esc(s[0])}</span>`,
+    `<span class="chip"><span class="dot ${m.regime === "risk_on" ? "g" : "r"}"></span>Market <b>${m.regime === "risk_on" ? "risk-on" : "risk-off"}</b> · SPY ${price(m.spy_price)} vs 50-day ${price(m.spy_sma50)}</span>`,
+    `<span class="chip">Max position <b>${m.max_position_pct}%</b> · keep ${m.cash_reserve_pct}% cash</span>`,
+    `<span class="chip"><span class="dot ${m.crypto_backdrop === "positive" ? "g" : "r"}"></span>Crypto backdrop <b>${esc(m.crypto_backdrop)}</b></span>`,
+  ].join("");
+}
+
+function renderEvents(d) {
+  const ev = (d.events || []).filter(e => mins(e.time_utc) < 120).slice(0, 8);
+  $("#events").innerHTML = ev.length ? ev.map(e => `<div class="event ${e.importance}">
+      <div class="when">${bkk(e.time_utc)}</div><div class="name">${esc(e.name)}</div>
+      <div class="in">${until(e.time_utc)}${e.importance === "high" ? " · big mover" : ""}</div></div>`).join("")
+    : `<div class="empty">No scheduled events in the next 30 days.</div>`;
+}
+
+function renderFilters() {
+  $("#filters").innerHTML = FILTERS.map(([k, l]) => `<button data-f="${k}" aria-pressed="${FILTER === k}">${l}</button>`).join("");
+}
+
+function matches(a) {
+  return FILTER === "all" || a.signal === FILTER || a.kind === FILTER || (FILTER === "warn" && a.news_warning);
+}
+
+function card(a) {
+  const chg = a.change_pct == null ? "" : `<span class="chg ${a.change_pct >= 0 ? "up" : "down"}">${a.change_pct >= 0 ? "+" : ""}${num(a.change_pct, 2)}%</span>`;
+  const s = SESSION[a.session] || SESSION.unknown;
+  const tags = a.buys.map(b => b.experimental
+    ? `<span class="tag warn">${b.counter_trend ? "15-min bounce · counter-trend" : "15-min momentum"} · experimental</span>`
+    : `<span class="tag ${b.confidence}">${esc(b.style)} · ${b.timeframe} · ${b.confidence}</span>`);
+  if (a.signal === "sell") tags.push(`<span class="tag exit">trend broken</span>`);
+  if (a.news_warning) tags.push(`<span class="tag warn">negative news</span>`);
+  a.flags.filter(f => !f.startsWith("negative news")).forEach(f => tags.push(`<span class="tag warn">${esc(f)}</span>`));
+  const n = (a.news || [])[0];
+  const open = OPEN.has(a.symbol);
+  return `<article class="card${open ? " open" : ""}" data-sym="${esc(a.symbol)}">
+    <button class="head" aria-expanded="${open}">
+      <div class="row"><div><span class="ticker">${esc(a.symbol)}</span><span class="kind">${KIND[a.kind] || ""}</span></div>
+        <span class="badge ${a.signal}">${a.signal.toUpperCase()}</span></div>
+      <div class="row"><div class="price">${price(a.price)}${chg}</div>
+        <span class="sess"><span class="dot ${s[1]}" style="display:inline-block"></span> ${esc(s[0])}</span></div>
+      ${tags.length ? `<div class="tags">${tags.join("")}</div>` : ""}
+      ${n ? `<div class="hl">${sentDot(n.label)}<span class="clip">${esc(n.headline)}</span></div>` : ""}
+    </button>
+    ${open ? detail(a) : ""}
+  </article>`;
+}
+
+function detail(a) {
+  const m = DATA.market, i = a.indicators || {};
+  const buys = a.buys.map(b => `<div class="box"${b.experimental ? ' style="border-style:dashed"' : ""}><h3>${b.experimental ? (b.counter_trend ? "Experimental 15-min bounce (against the daily trend)" : "Experimental 15-min momentum") : "Buy"} · ${esc(b.style)} (${b.timeframe}) · confidence ${b.confidence}</h3><dl>
+      <dt>Why</dt><dd>${esc(b.reason)}</dd>
+      <dt>Confidence</dt><dd>${esc(b.confidence_why)}</dd>
+      <dt>Main risk</dt><dd>${esc(b.risk)}</dd>
+      <dt>Wrong if</dt><dd>${esc(b.wrong_if)}</dd>
+      <dt>Stop</dt><dd>${price(b.stop_price)} (${b.trail_pct}% trailing)</dd>
+      <dt>Size</dt><dd>at most ${m.max_position_pct}% of your portfolio</dd></dl></div>`).join("");
+  const exits = a.exits.length ? `<div class="box"><h3>If you hold it</h3><dl>${a.exits.map(e => `<dt>${esc(e.style)}</dt><dd>${esc(e.reason)}</dd>`).join("")}</dl></div>` : "";
+  const warn = a.news_warning ? `<div class="box" style="border-color:var(--warn)"><h3>Negative news in the last 24h</h3>
+      <a href="${esc(url(a.news_warning.url))}" target="_blank" rel="noopener">${esc(a.news_warning.headline)}</a></div>` : "";
+  const ind = a.indicators ? `<div class="ind">
+      <div><span>SMA5</span>${price(i.sma5)}</div><div><span>SMA20</span>${price(i.sma20)}</div><div><span>SMA50</span>${price(i.sma50)}</div>
+      <div><span>20-day high</span>${price(i.high20)}</div><div><span>Prev close</span>${price(i.prev_close)}</div>
+      <div><span>Volume pace${i.volume_source ? " (" + esc(i.volume_source) + ")" : ""}</span>${i.volume_pace == null ? "–" : i.volume_pace + "x"}</div></div>` : "";
+  const news = (a.news || []).length ? `<div class="news" style="margin-top:10px"><ul>${a.news.map(n => `<li>${sentDot(n.label)}<div>
+      <a href="${esc(url(n.url))}" target="_blank" rel="noopener">${esc(n.headline)}</a>
+      <div class="src">${esc(n.source)} · ${ago(n.time)}${n.about ? "" : " · may not be mainly about " + esc(a.symbol)}</div></div></li>`).join("")}</ul></div>` : "";
+  const mode = MODE[a.symbol] || "daily";
+  return `<div class="detail"><div class="cols">
+    <div><div class="tabs">
+        <button data-mode="daily" aria-pressed="${mode === "daily"}">Daily</button>
+        <button data-mode="m15" aria-pressed="${mode === "m15"}">15 min</button></div>
+      <div class="chart" id="chart-${esc(a.symbol.replace("/", "-"))}"></div>
+      <div class="legend">${mode === "daily" ? `<i style="background:var(--sma20)"></i>SMA20<i style="background:var(--sma50)"></i>SMA50` : "Last 3 days"}${a.buys.length ? `<i style="background:var(--sell)"></i>stop` : ""}</div>
+      ${ind}</div>
+    <div>${warn}${buys}${exits}${!a.buys.length && !a.exits.length ? `<div class="box"><h3>No signal right now</h3>None of the three styles fires.</div>` : ""}${news}</div>
+  </div></div>`;
+}
+
+async function drawChart(a) {
+  const safe = a.symbol.replace("/", "-"), el = document.getElementById("chart-" + safe);
+  if (!el || !window.LightweightCharts) return;
+  if (CHARTS[a.symbol]) { CHARTS[a.symbol].remove(); delete CHARTS[a.symbol]; }
+  let c;
+  try { c = await fetchData(`charts/${safe}`); } catch { el.innerHTML = `<div class="empty">No chart data yet.</div>`; return; }
+  const css = getComputedStyle(document.documentElement), v = n => css.getPropertyValue(n).trim();
+  const chart = LightweightCharts.createChart(el, {autoSize: true,
+    layout: {background: {color: v("--card")}, textColor: v("--muted"), fontSize: 11},
+    grid: {vertLines: {color: v("--line")}, horzLines: {color: v("--line")}},
+    rightPriceScale: {borderColor: v("--line")}, timeScale: {borderColor: v("--line"), timeVisible: true}});
+  const mode = MODE[a.symbol] || "daily";
+  const candles = chart.addCandlestickSeries({upColor: v("--up"), downColor: v("--down"), borderVisible: false, wickUpColor: v("--up"), wickDownColor: v("--down")});
+  candles.setData(mode === "daily" ? c.daily : c.m15);
+  if (mode === "daily") {
+    chart.addLineSeries({color: v("--sma20"), lineWidth: 2, priceLineVisible: false, lastValueVisible: false}).setData(c.sma20);
+    chart.addLineSeries({color: v("--sma50"), lineWidth: 2, priceLineVisible: false, lastValueVisible: false}).setData(c.sma50);
+    chart.timeScale().setVisibleLogicalRange({from: c.daily.length - 120, to: c.daily.length + 2});
+  } else { chart.timeScale().fitContent(); }
+  if (a.digits != null) candles.applyOptions({priceFormat: {type: "price", precision: a.digits, minMove: Math.pow(10, -a.digits)}});
+  (a.buys || []).forEach(b => candles.createPriceLine({price: b.stop_price, color: v("--sell"), lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: `stop (${b.style})`}));
+  (a.setups || []).forEach(st => {
+    candles.createPriceLine({price: st.stop_price, color: v("--sell"), lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: `SL ${st.direction}`});
+    candles.createPriceLine({price: st.target_price, color: v("--buy"), lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: `TP ${st.direction}`});
+  });
+  CHARTS[a.symbol] = chart;
+}
+
+function renderGrid() {
+  const list = DATA.assets.filter(matches).sort((x, y) => ORDER[x.signal] - ORDER[y.signal] || x.symbol.localeCompare(y.symbol));
+  Object.values(CHARTS).forEach(c => c.remove()); for (const k in CHARTS) delete CHARTS[k];
+  $("#grid").innerHTML = list.length ? list.map(card).join("") : `<div class="empty">Nothing matches this filter right now.</div>`;
+  list.filter(a => OPEN.has(a.symbol)).forEach(drawChart);
+}
+
+function renderContext(d) {
+  const mc = d.context.macro.filter(x => !x.error);
+  $("#macro").innerHTML = `<tr><th>US macro (FRED)</th><th class="n">Latest</th><th class="n">Change*</th></tr>` +
+    mc.map(x => `<tr><td>${esc(x.name)}<div class="src">${esc(x.date)}</div></td><td class="n">${num(x.value, 2)}</td>
+      <td class="n">${x.change_20_obs >= 0 ? "+" : ""}${num(x.change_20_obs, 2)}</td></tr>`).join("") +
+    `<tr><td colspan="3" class="src">*change over the last 20 readings. A rising dollar and rising real yields often weigh on gold.</td></tr>`;
+  const h = d.headlines || [];
+  $("#headlines").innerHTML = h.length ? `<ul>${h.map(n => `<li>${sentDot(n.label)}<div>
+      <a href="${esc(url(n.url))}" target="_blank" rel="noopener">${esc(n.headline)}</a>
+      <div class="src">${esc(n.source)} · ${ago(n.time)}</div></div></li>`).join("")}</ul>` : `<div class="empty">No headlines.</div>`;
+  $("#disclaimer").textContent = d.disclaimer;
+}
+
+/* ---------------- Forex & gold (XM) ---------------- */
+const CALC_KEY = "sd_fx_calc";
+function loadCalc() {
+  try { const c = JSON.parse(localStorage.getItem(CALC_KEY) || "{}");
+    if (c.bal) $("#c-bal").value = c.bal; if (c.risk) $("#c-risk").value = c.risk;
+    if (c.type) $("#c-type").value = c.type; if (c.lev) $("#c-lev").value = c.lev; } catch (e) {}
+}
+function calc() {
+  return {bal: parseFloat($("#c-bal").value) || 0, risk: parseFloat($("#c-risk").value),
+          type: $("#c-type").value, lev: parseFloat($("#c-lev").value)};
+}
+const fxNum = (a, x) => x == null ? "–" : Number(x).toFixed(a.digits ?? 5);
+function fxSize(a, st) {
+  // Lots so that hitting the stop loses about risk% of the balance (USD account). Same math as sd/forex.py lot_size().
+  const c = calc(), units = DATA.forex.contract[c.type][a.kind === "gold" ? "gold" : "fx"];
+  const [base, quote] = a.symbol.split("/");
+  let lossPerLot = st.stop_distance * units;            // in the quote currency
+  if (quote !== "USD") lossPerLot /= a.price;           // e.g. USD/JPY: yen -> dollars
+  const riskUsd = c.bal * c.risk / 100;
+  const lots = Math.floor(riskUsd / lossPerLot * 100 + 1e-9) / 100;
+  const value = lots * units * (base === "USD" ? 1 : a.price);
+  return {c, units, lossPerLot, riskUsd, lots, risk: lots * lossPerLot, margin: value / c.lev,
+          minRisk: 0.01 * lossPerLot, reward: lots * lossPerLot * st.reward_risk};
+}
+function sizeBox(a, st) {
+  const z = fxSize(a, st);
+  if (!z.c.bal) return `<div class="size">Enter your XM balance above to see the lot size.</div>`;
+  if (z.lots < 0.01) return `<div class="size" style="background:var(--warn-bg);color:var(--warn)">Too big for your risk setting: even the smallest trade (0.01 lot) would risk
+    $${num(z.minRisk, 2)} (${num(z.minRisk / z.c.bal * 100, 1)}% of your balance). Skip it${z.c.type === "standard" ? ", or use a Micro account" : ""}.</div>`;
+  return `<div class="size">Size <b>${num(z.lots, 2)} lot</b> (${a.kind === "gold" ? num(z.lots * z.units, 2) + " oz" : num(z.lots * z.units, 0) + " " + a.symbol.split("/")[0]})<br>
+    Lose ≈ $${num(z.risk, 2)} at the stop · win ≈ $${num(z.reward, 2)} at the target · margin ≈ $${num(z.margin, 2)} at 1:${z.c.lev}</div>`;
+}
+function fxCard(a) {
+  const open = OPEN.has(a.symbol);
+  const chg = a.change_pct == null ? "" : `<span class="chg ${a.change_pct >= 0 ? "up" : "down"}">${a.change_pct >= 0 ? "+" : ""}${num(a.change_pct, 2)}%</span>`;
+  const tags = a.setups.map(x => `<span class="tag ${x.direction}">${x.direction} · ${esc(x.style)} · ${x.confidence}</span>`);
+  a.flags.forEach(f => tags.push(`<span class="tag warn">${esc(f)}</span>`));
+  const n = (a.news || [])[0];
+  const atr = a.atr == null ? "" : a.pip ? `${num(a.atr / a.pip, 0)} pips` : `$${num(a.atr, 2)}`;
+  return `<article class="card${open ? " open" : ""}" data-sym="${esc(a.symbol)}">
+    <button class="head" aria-expanded="${open}">
+      <div class="row"><div><span class="ticker">${esc(a.symbol)}</span><span class="kind">XM: ${esc(a.xm)}</span></div>
+        <span class="badge ${a.signal}">${a.signal === "none" ? "NO SETUP" : a.signal.toUpperCase()}</span></div>
+      <div class="row"><div class="price">${fxNum(a, a.price)}${chg}</div>
+        <span class="sess">daily range ≈ ${atr} (${a.atr_pct ?? "–"}%)</span></div>
+      ${tags.length ? `<div class="tags">${tags.join("")}</div>` : ""}
+      ${n ? `<div class="hl">${sentDot(n.label)}<span class="clip">${esc(n.headline)}</span></div>` : ""}
+    </button>
+    ${open ? fxDetail(a) : ""}
+  </article>`;
+}
+function fxDetail(a) {
+  const i = a.indicators || {}, f = DATA.forex;
+  const sets = a.setups.map(st => `<div class="box" style="border-color:var(--${st.direction === "long" ? "buy" : "sell"})">
+      <h3>${st.direction === "long" ? "LONG (buy)" : "SHORT (sell)"} · ${esc(st.style)} · confidence ${st.confidence}</h3>
+      ${sizeBox(a, st)}<dl>
+      <dt>Entry ≈</dt><dd>${fxNum(a, st.entry)} (current price; check XM's live quote and spread)</dd>
+      <dt>Stop-loss</dt><dd>${fxNum(a, st.stop_price)}${st.stop_pips ? ` (${num(st.stop_pips, 1)} pips)` : ""} · ${f.stop_atr} × daily range</dd>
+      <dt>Take-profit</dt><dd>${fxNum(a, st.target_price)} (${st.reward_risk}× the stop distance)</dd>
+      <dt>Why</dt><dd>${esc(st.reason)}</dd>
+      <dt>Main risk</dt><dd>${esc(st.risk)}</dd>
+      <dt>Wrong if</dt><dd>${esc(st.wrong_if)}</dd>
+      <dt>Confidence</dt><dd>${esc(st.confidence_why)}</dd></dl></div>`).join("");
+  const none = a.setups.length ? "" : `<div class="box"><h3>No setup right now</h3>None of the trend, momentum or dip rules fires in either direction. Waiting is a position too.</div>`;
+  const ind = `<div class="ind">
+      <div><span>SMA20</span>${fxNum(a, i.sma20)}</div><div><span>SMA50</span>${fxNum(a, i.sma50)}</div><div><span>Daily range (ATR)</span>${a.pip ? num(a.atr / a.pip, 0) + " pips" : "$" + num(a.atr, 2)}</div>
+      <div><span>20-day high</span>${fxNum(a, i.high20)}</div><div><span>20-day low</span>${fxNum(a, i.low20)}</div><div><span>Prev close</span>${fxNum(a, i.prev_close)}</div></div>`;
+  const news = (a.news || []).length ? `<div class="news" style="margin-top:10px"><ul>${a.news.map(n => `<li>${sentDot(n.label)}<div>
+      <a href="${esc(url(n.url))}" target="_blank" rel="noopener">${esc(n.headline)}</a><div class="src">${esc(n.source)} · ${ago(n.time)}</div></div></li>`).join("")}</ul></div>` : "";
+  const mode = MODE[a.symbol] || "daily";
+  return `<div class="detail"><div class="cols">
+    <div><div class="tabs"><button data-mode="daily" aria-pressed="${mode === "daily"}">Daily</button>
+        <button data-mode="m15" aria-pressed="${mode === "m15"}">1 hour</button></div>
+      <div class="chart" id="chart-${esc(a.symbol.replace("/", "-"))}"></div>
+      <div class="legend">${mode === "daily" ? `<i style="background:var(--sma20)"></i>SMA20<i style="background:var(--sma50)"></i>SMA50` : "Last 10 days, Bangkok time"}${a.setups.length ? `<i style="background:var(--sell)"></i>stop<i style="background:var(--buy)"></i>target` : ""}</div>
+      ${ind}</div>
+    <div>${sets}${none}${news}</div></div></div>`;
+}
+function renderFx(d) {
+  const f = d.forex, m = f.market;
+  const chips = [`<span class="chip"><span class="dot ${m.open ? "g" : "r"}"></span>Forex market <b>${m.open ? "open" : "closed"}</b> · ${m.open ? "closes" : "opens"} ${bkk(m.next_change)}</span>`];
+  if (m.open) chips.push(`<span class="chip">Active: <b>${esc(m.sessions.join(", "))}</b></span>`);
+  f.context.forEach(c => chips.push(`<span class="chip">${esc(c.symbol)} ${price(c.price)} · 20d ${c.change_20d_pct >= 0 ? "+" : ""}${num(c.change_20d_pct, 2)}% · context only</span>`));
+  $("#fxmarket").innerHTML = chips.join("");
+  const ct = f.contract;
+  $("#calc-note").textContent = `Kept only in this browser, never uploaded. Lot sizes assume a USD account and XM contract sizes: forex Micro ${num(ct.micro.fx, 0)} / Standard ${num(ct.standard.fx, 0)} units per lot; gold Micro ${ct.micro.gold} oz / Standard ${ct.standard.gold} oz per lot. Check GOLD's contract size under "Specification" in the XM app. ${m.note}`;
+  const order = {long: 0, short: 0, mixed: 1, none: 2};
+  const list = [...f.assets].sort((x, y) => order[x.signal] - order[y.signal] || x.symbol.localeCompare(y.symbol));
+  $("#fxgrid").innerHTML = list.map(fxCard).join("");
+  list.filter(a => OPEN.has(a.symbol)).forEach(drawChart);
+  const un = f.dollar_news || [];
+  $("#usdnews").innerHTML = `<h3 style="margin:4px 0 6px;font-size:14px">Dollar &amp; Fed headlines</h3>` + (un.length ? `<ul>${un.map(n => `<li>${sentDot(n.label)}<div>
+      <a href="${esc(url(n.url))}" target="_blank" rel="noopener">${esc(n.headline)}</a><div class="src">${esc(n.source)} · ${ago(n.time)}</div></div></li>`).join("")}</ul>` : `<div class="empty">No dollar headlines.</div>`);
+}
+const findAsset = sym => DATA.assets.find(x => x.symbol === sym) || DATA.forex.assets.find(x => x.symbol === sym);
+
+function render() {
+  renderHeader(DATA); renderEvents(DATA); renderFilters(); renderGrid(); renderFx(DATA); renderContext(DATA);
+}
+
+async function load() {
+  try {
+    if (!ENC) {
+      const r = await fetch(`signals.json?t=${Date.now()}`, {cache: "no-store"});
+      if (r.ok) { DATA = await r.json(); render(); return; }
+      const st = await fetch(`status.json?t=${Date.now()}`, {cache: "no-store"});
+      if (!st.ok) throw new Error("no data");
+      const s = await st.json();
+      ENC = {salt: s.salt, iterations: s.iterations, key: null};
+    }
+    if (!ENC.key) {
+      let saved = null; try { saved = localStorage.getItem(PASS_KEY); } catch (e) {}
+      if (saved) { await unlockWith(saved, true); } else { showUnlock(); }
+      return;
+    }
+    DATA = await fetchData("signals");
+    render();
+  } catch (e) {
+    $("#updated").textContent = "Could not load the data: on your PC run dashboard.bat; online, the site may still be publishing.";
+  }
+}
+$("#unlock").addEventListener("submit", async e => {
+  e.preventDefault();
+  const pass = $("#pass").value; if (!pass) return;
+  $("#unlock-msg").textContent = "Unlocking…";
+  await unlockWith(pass, $("#remember").checked);
+});
+
+$("#filters").addEventListener("click", e => {
+  const b = e.target.closest("button[data-f]"); if (!b) return;
+  FILTER = b.dataset.f; renderFilters(); renderGrid();
+});
+function onCardClick(e) {
+  const card = e.target.closest(".card"); if (!card) return;
+  const sym = card.dataset.sym, a = findAsset(sym);
+  const tab = e.target.closest("button[data-mode]");
+  if (tab) { MODE[sym] = tab.dataset.mode; card.outerHTML = cardFor(a); drawChart(a); return; }
+  if (e.target.closest(".detail")) return;   // clicks inside an open card (links, text) don't close it
+  if (!e.target.closest(".head")) return;
+  OPEN.has(sym) ? OPEN.delete(sym) : OPEN.add(sym);
+  card.outerHTML = cardFor(a);
+  if (OPEN.has(sym)) drawChart(a);
+}
+$("#grid").addEventListener("click", onCardClick);
+$("#fxgrid").addEventListener("click", onCardClick);
+function cardFor(a) { if (CHARTS[a.symbol]) { CHARTS[a.symbol].remove(); delete CHARTS[a.symbol]; } return a.setups ? fxCard(a) : card(a); }
+["c-bal", "c-risk", "c-type", "c-lev"].forEach(id => $("#" + id).addEventListener("input", () => {
+  try { localStorage.setItem(CALC_KEY, JSON.stringify({bal: $("#c-bal").value, risk: $("#c-risk").value, type: $("#c-type").value, lev: $("#c-lev").value})); } catch (e) {}
+  if (DATA) renderFx(DATA);
+}));
+loadCalc();
+
+load();
+setInterval(() => (!ENC || ENC.key) && load(), 30000);   // pick up new signals every 30 seconds
+setInterval(() => DATA && renderHeader(DATA), 60000);
+</script>
+</body>
+</html>
